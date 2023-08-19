@@ -8,24 +8,38 @@ pub struct URL<'a> {
 }
 
 impl URL<'_> {
-    fn new(url: &str) -> Result<URL, UrlError> {
-        // Check if url has a correct format
-        if url.contains("://") {
+    pub fn new(url: &str) -> Result<URL, UrlError> {
+        let (url_scheme, url_without_scheme) = if url.contains("://") {
             let url_collection = url.split("://").collect::<Vec<&str>>();
-            Ok(URL {
-                scheme: url_collection[0],
-                host: "",
-                path: ""
-            })
+            if url_collection.len() == 2 {
+                (url_collection[0], url_collection[1])
+            } else {
+                return Err(UrlError { message: String::from("Parsing error") });
+            }
         } else {
-            Err(UrlError { message: String::from("No scheme detected") })
-        }
+            return Err(UrlError { message: String::from("'://' not detected") });
+        };
+
+        let (url_host, host_length) = if url_without_scheme.contains("/") {
+            let h = url_without_scheme.split("/").collect::<Vec<&str>>()[0];
+            (h, h.len())
+        } else {
+            (url_without_scheme, url_without_scheme.len())
+        };
+
+        let url_path = &url_without_scheme[host_length..];
+
+        Ok(URL{
+            scheme: url_scheme,
+            host: url_host,
+            path: url_path,
+        })
     }
 }
 
-
+// TO-DO : reimplement based on errors6.rs of rustlings
 #[derive(Debug)]
-struct UrlError {
+pub struct UrlError {
     message: String
 }
 
@@ -42,9 +56,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn get_correct_scheme() {
-        let url = URL::new("http://localhost:8080").unwrap();
-        assert_eq!(url.scheme, "http");
+    fn parse_url_correctly() {
+        let url1 = URL::new("http://localhost:8080").unwrap();
+        assert_eq!(url1.scheme, "http");
+        assert_eq!(url1.host, "localhost:8080");
+        assert_eq!(url1.path, "");
+
+        let url2 = URL::new("http://localhost:8080/path/to/file").unwrap();
+        assert_eq!(url2.scheme, "http");
+        assert_eq!(url2.host, "localhost:8080");
+        assert_eq!(url2.path, "/path/to/file");
     }
 
     #[test]
